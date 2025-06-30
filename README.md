@@ -1,4 +1,4 @@
-# Liaplus AI Chatbot - Prompt Engineer Shortlisting System
+# Liaplus AI Chatbot - Prompt Engineer
 
 An intelligent AI-powered chatbot application built with Flask, Machine Learning, and modern web technologies for automated candidate shortlisting in the Prompt Engineer role.
 
