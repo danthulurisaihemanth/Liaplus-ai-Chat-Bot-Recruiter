@@ -2,6 +2,11 @@
 
 An intelligent AI-powered chatbot application built with Flask, Machine Learning, and modern web technologies for automated candidate shortlisting in the Prompt Engineer role.
 
+
+# ChatBot Interface
+
+![Chat UI Screenshot](Screenshots/01.png)
+
 ## 🚀 Features
 
 - **Intelligent Conversation**: AI-powered chatbot for natural candidate interaction

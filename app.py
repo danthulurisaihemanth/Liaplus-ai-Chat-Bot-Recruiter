@@ -1,8 +1,3 @@
-"""
-Liaplus AI Chatbot for Candidate Shortlisting
-Main application file with Flask API and ML integration
-"""
-
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import numpy as np
@@ -22,7 +17,6 @@ from werkzeug.security import generate_password_hash
 import joblib
 import re
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,7 +33,6 @@ class LiaplusAIChatbot:
         self.conversation_history = []
         
     def _load_job_requirements(self):
-        """Load job requirements and criteria"""
         return {
             "prompt_engineer": {
                 "required_skills": [
@@ -56,33 +49,22 @@ class LiaplusAIChatbot:
         }
     
     def preprocess_text(self, text):
-        """Clean and preprocess text input"""
         text = text.lower()
         text = re.sub(r'[^a-zA-Z\s]', '', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text
     
     def calculate_candidate_score(self, candidate_text, role="prompt_engineer"):
-        """Calculate candidate compatibility score using ML"""
         try:
             requirements = self.job_requirements.get(role, {})
             required_skills = requirements.get("required_skills", [])
             experience_keywords = requirements.get("experience_keywords", [])
-            
-            # Preprocess candidate text
             processed_text = self.preprocess_text(candidate_text)
-            
-            # Calculate skill match score
             skill_matches = sum(1 for skill in required_skills if skill in processed_text)
             skill_score = skill_matches / len(required_skills)
-            
-            # Calculate experience score
             exp_matches = sum(1 for keyword in experience_keywords if keyword in processed_text)
             exp_score = exp_matches / len(experience_keywords) if experience_keywords else 0
-            
-            # Combined score with weights
             final_score = (skill_score * 0.7) + (exp_score * 0.3)
-            
             return {
                 "overall_score": round(final_score, 2),
                 "skill_score": round(skill_score, 2),
@@ -91,36 +73,25 @@ class LiaplusAIChatbot:
                 "matched_experience": exp_matches,
                 "recommendation": "SHORTLISTED" if final_score >= requirements.get("minimum_score", 0.6) else "NOT_SHORTLISTED"
             }
-            
         except Exception as e:
             logger.error(f"Error calculating candidate score: {str(e)}")
             return {"error": "Score calculation failed"}
     
     def generate_ai_response(self, user_input, context=""):
-        """Generate AI response using rule-based system with ML enhancement"""
         try:
-            # Preprocess input
             processed_input = self.preprocess_text(user_input)
-            
-            # Intent classification
             if any(word in processed_input for word in ["hello", "hi", "hey", "start"]):
                 return self._get_greeting_response()
-            
             elif any(word in processed_input for word in ["apply", "application", "job", "position"]):
                 return self._get_application_response()
-            
             elif any(word in processed_input for word in ["experience", "skills", "background"]):
                 return self._get_experience_inquiry()
-            
             elif any(word in processed_input for word in ["prompt", "engineering", "nlp", "ai"]):
                 return self._get_technical_response()
-            
             elif any(word in processed_input for word in ["help", "support", "question"]):
                 return self._get_help_response()
-            
             else:
                 return self._get_default_response()
-                
         except Exception as e:
             logger.error(f"Error generating AI response: {str(e)}")
             return "I apologize, but I'm having trouble processing your request. Please try again."
@@ -196,15 +167,11 @@ To better assist you, could you please:
 
 I'm here to help evaluate your qualifications and guide you through the application process!"""
 
-# Initialize chatbot
 chatbot = LiaplusAIChatbot()
 
-# Database setup
 def init_db():
-    """Initialize SQLite database"""
     conn = sqlite3.connect('liaplus_chatbot.db')
     cursor = conn.cursor()
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,7 +182,6 @@ def init_db():
             candidate_score REAL
         )
     ''')
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS candidates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -227,31 +193,22 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
     conn.commit()
     conn.close()
 
-# API Routes
 @app.route('/')
 def home():
-    """Main chatbot interface"""
     return render_template('chat.html')
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Main chat endpoint"""
     try:
         data = request.get_json()
         user_input = data.get('message', '')
         session_id = data.get('session_id', 'default')
-        
         if not user_input:
             return jsonify({'error': 'Message is required'}), 400
-        
-        # Generate AI response
         bot_response = chatbot.generate_ai_response(user_input)
-        
-        # Store conversation
         conn = sqlite3.connect('liaplus_chatbot.db')
         cursor = conn.cursor()
         cursor.execute('''
@@ -260,33 +217,25 @@ def chat():
         ''', (user_input, bot_response, session_id))
         conn.commit()
         conn.close()
-        
         return jsonify({
             'response': bot_response,
             'timestamp': datetime.now().isoformat(),
             'session_id': session_id
         })
-        
     except Exception as e:
         logger.error(f"Chat API error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/evaluate', methods=['POST'])
 def evaluate_candidate():
-    """Evaluate candidate qualifications"""
     try:
         data = request.get_json()
         candidate_text = data.get('experience', '')
         name = data.get('name', '')
         email = data.get('email', '')
-        
         if not candidate_text:
             return jsonify({'error': 'Experience text is required'}), 400
-        
-        # Calculate candidate score
         evaluation = chatbot.calculate_candidate_score(candidate_text)
-        
-        # Store candidate data
         conn = sqlite3.connect('liaplus_chatbot.db')
         cursor = conn.cursor()
         cursor.execute('''
@@ -296,19 +245,16 @@ def evaluate_candidate():
               evaluation.get('recommendation', 'NOT_EVALUATED')))
         conn.commit()
         conn.close()
-        
         return jsonify({
             'evaluation': evaluation,
             'timestamp': datetime.now().isoformat()
         })
-        
     except Exception as e:
         logger.error(f"Evaluation API error: {str(e)}")
         return jsonify({'error': 'Evaluation failed'}), 500
 
 @app.route('/api/candidates', methods=['GET'])
 def get_candidates():
-    """Get all evaluated candidates"""
     try:
         conn = sqlite3.connect('liaplus_chatbot.db')
         cursor = conn.cursor()
@@ -316,7 +262,6 @@ def get_candidates():
             SELECT id, name, email, overall_score, recommendation, timestamp
             FROM candidates ORDER BY overall_score DESC
         ''')
-        
         candidates = []
         for row in cursor.fetchall():
             candidates.append({
@@ -327,17 +272,14 @@ def get_candidates():
                 'recommendation': row[4],
                 'timestamp': row[5]
             })
-        
         conn.close()
         return jsonify({'candidates': candidates})
-        
     except Exception as e:
         logger.error(f"Get candidates error: {str(e)}")
         return jsonify({'error': 'Failed to retrieve candidates'}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
